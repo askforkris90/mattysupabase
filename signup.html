@@ -1,0 +1,157 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Matty Social · Create Account (Supabase)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="./css/matty.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="./js/supabase-init.js"></script>
+</head>
+<body>
+  <main class="matty-shell">
+    <div class="matty-shell-inner">
+      <div class="matty-logo-row">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="matty-logo-mark">M</div>
+          <div class="matty-logo-text">
+            <div class="matty-logo-name">Matty Social</div>
+            <div class="matty-logo-sub">Creator Sign-up</div>
+          </div>
+        </div>
+        <div class="matty-hint-pill">
+          <span class="matty-dot"></span>
+          <span>Supabase Auth + Profiles</span>
+        </div>
+      </div>
+
+      <h1 class="matty-title">Create your Matty ID</h1>
+      <p class="matty-subtitle">
+        One login for QR pages, artist cards, and Matty chat. Powered by Supabase.
+      </p>
+
+      <form id="signup-form" class="matty-form">
+        <div>
+          <label for="signup-display">Display name</label>
+          <div class="matty-input-wrap">
+            <span class="matty-input-icon">🎭</span>
+            <input id="signup-display" class="matty-input" type="text"
+                   placeholder="Matty Artist" required />
+          </div>
+        </div>
+
+        <div>
+          <label for="signup-email">Email</label>
+          <div class="matty-input-wrap">
+            <span class="matty-input-icon">✉️</span>
+            <input id="signup-email" class="matty-input" type="email"
+                   placeholder="you@example.com" required />
+          </div>
+        </div>
+
+        <div>
+          <label for="signup-password">Password</label>
+          <div class="matty-input-wrap">
+            <span class="matty-input-icon">🔑</span>
+            <input id="signup-password" class="matty-input" type="password"
+                   placeholder="Create a strong password" required />
+          </div>
+        </div>
+
+        <div>
+          <label for="signup-handle">Artist handle (optional)</label>
+          <div class="matty-input-wrap">
+            <span class="matty-input-icon">@</span>
+            <input id="signup-handle" class="matty-input" type="text"
+                   placeholder="@mattyartist" />
+          </div>
+        </div>
+
+        <button type="submit" class="matty-btn-primary" id="signup-btn">
+          <span>Create account</span>
+          <span style="font-size:14px;">★</span>
+        </button>
+
+        <button type="button" class="matty-btn-secondary" onclick="window.location.href='./index.html'">
+          <span>Already have an account?</span>
+          <span>Sign in</span>
+        </button>
+      </form>
+
+      <div id="signup-status" class="matty-status"></div>
+
+      <div class="matty-footer">
+        <span>By joining, you agree to Matty’s neon terms.</span>
+        <span style="opacity:0.7;">Powered by Supabase</span>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { supabaseClient } from "./js/supabase-init.js";
+
+    const form = document.getElementById("signup-form");
+    const statusEl = document.getElementById("signup-status");
+    const btn = document.getElementById("signup-btn");
+
+    function setStatus(msg, type="") {
+      statusEl.textContent = msg || "";
+      statusEl.classList.remove("error","ok");
+      if (type) statusEl.classList.add(type);
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const displayName = document.getElementById("signup-display").value.trim();
+      const email = document.getElementById("signup-email").value.trim();
+      const password = document.getElementById("signup-password").value;
+      const handle = document.getElementById("signup-handle").value.trim();
+
+      setStatus("Creating account…");
+      btn.disabled = true;
+
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password
+      });
+
+      if (error) {
+        console.error(error);
+        setStatus(error.message || "Sign up failed", "error");
+        btn.disabled = false;
+        return;
+      }
+
+      const user = data.user;
+      if (user) {
+        const { error: profileError } = await supabaseClient
+          .from("profiles")
+          .upsert({
+            id: user.id,
+            display_name: displayName,
+            handle: handle || null,
+            bio: "",
+            avatar_url: null,
+            main_link: null,
+            links: [],
+            email: email
+          });
+
+        if (profileError) {
+          console.error(profileError);
+          setStatus("Account created, but profile failed: " + profileError.message, "error");
+        } else {
+          setStatus("Account created. Redirecting…", "ok");
+          setTimeout(() => {
+            window.location.href = "./dashboard.html";
+          }, 700);
+        }
+      } else {
+        setStatus("Check your email to confirm sign-up.", "ok");
+      }
+      btn.disabled = false;
+    });
+  </script>
+</body>
+</html>

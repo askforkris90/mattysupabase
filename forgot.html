@@ -1,0 +1,93 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Matty Social · Reset Password (Supabase)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="./css/matty.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="./js/supabase-init.js"></script>
+</head>
+<body>
+  <main class="matty-shell">
+    <div class="matty-shell-inner">
+      <div class="matty-logo-row">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="matty-logo-mark">M</div>
+          <div class="matty-logo-text">
+            <div class="matty-logo-name">Matty Social</div>
+            <div class="matty-logo-sub">Password Reset</div>
+          </div>
+        </div>
+        <div class="matty-hint-pill">
+          <span class="matty-dot"></span>
+          <span>Supabase Reset Email</span>
+        </div>
+      </div>
+
+      <h1 class="matty-title">Reset your password</h1>
+      <p class="matty-subtitle">
+        Enter the email linked to your Matty account. You’ll receive a Supabase reset link.
+      </p>
+
+      <form id="forgot-form" class="matty-form">
+        <div>
+          <label for="forgot-email">Email</label>
+          <div class="matty-input-wrap">
+            <span class="matty-input-icon">✉️</span>
+            <input id="forgot-email" class="matty-input" type="email"
+                   placeholder="you@example.com" required />
+          </div>
+        </div>
+
+        <button type="submit" class="matty-btn-primary" id="forgot-btn">
+          <span>Send reset link</span>
+          <span style="font-size:14px;">📩</span>
+        </button>
+
+        <button type="button" class="matty-btn-secondary" onclick="window.location.href='./index.html'">
+          <span>Back to sign in</span>
+        </button>
+      </form>
+
+      <div id="forgot-status" class="matty-status"></div>
+
+      <div class="matty-footer">
+        <span>Check your inbox for the password reset email.</span>
+        <span style="opacity:0.7;">Matty Security · Supabase</span>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { supabaseClient } from "./js/supabase-init.js";
+
+    const form = document.getElementById("forgot-form");
+    const statusEl = document.getElementById("forgot-status");
+    const btn = document.getElementById("forgot-btn");
+
+    function setStatus(msg, type="") {
+      statusEl.textContent = msg || "";
+      statusEl.classList.remove("error","ok");
+      if (type) statusEl.classList.add(type);
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("forgot-email").value.trim();
+      setStatus("Sending reset email…");
+      btn.disabled = true;
+
+      const { data, error } = await supabaseClient.auth.resetPasswordForEmail(email);
+      if (error) {
+        console.error(error);
+        setStatus(error.message || "Failed to send reset email", "error");
+      } else {
+        setStatus("Reset link sent. Check your inbox.", "ok");
+      }
+      btn.disabled = false;
+    });
+  </script>
+</body>
+</html>

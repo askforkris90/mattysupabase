@@ -1,0 +1,151 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Matty Artist Card (Supabase)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="./css/matty.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="./js/supabase-init.js"></script>
+</head>
+<body class="artist-body">
+  <main class="artist-shell">
+    <div class="artist-inner">
+      <header class="artist-header">
+        <div class="artist-avatar-ring">
+          <div class="artist-avatar-inner">
+            <img id="artist-avatar-img" alt="Artist avatar" />
+            <span id="artist-avatar-fallback">M</span>
+          </div>
+        </div>
+        <div>
+          <div class="artist-name" id="artist-name">Matty Artist</div>
+          <div class="artist-handle" id="artist-handle">@handle</div>
+        </div>
+      </header>
+
+      <p class="artist-bio" id="artist-bio">
+        Loading artist card…
+      </p>
+
+      <div class="artist-main-link" id="artist-main-link-wrap" style="display:none;">
+        <a id="artist-main-link" href="#" target="_blank" rel="noopener noreferrer">
+          <span class="icon">🔗</span>
+          <span id="artist-main-link-text">Open main link</span>
+        </a>
+      </div>
+
+      <section class="artist-qr-section">
+        <div class="artist-qr-box">
+          <div class="artist-qr-inner">
+            <img id="artist-qr-img" alt="QR code" />
+          </div>
+        </div>
+        <div class="artist-qr-copy">
+          <div class="artist-qr-title">Scan to open</div>
+          <div class="artist-qr-text" id="artist-qr-text">
+            Use your camera to open this creator’s main link or Matty page.
+          </div>
+        </div>
+      </section>
+
+      <footer class="artist-footer">
+        <span id="artist-email" style="opacity:0.8;"></span>
+        <span style="opacity:0.7;">Matty · Neon Artist Card</span>
+      </footer>
+    </div>
+  </main>
+
+  <script type="module">
+    import { supabaseClient } from "./js/supabase-init.js";
+
+    const params = new URLSearchParams(window.location.search);
+    const uid = params.get("uid");
+
+    const nameEl = document.getElementById("artist-name");
+    const handleEl = document.getElementById("artist-handle");
+    const bioEl = document.getElementById("artist-bio");
+    const emailEl = document.getElementById("artist-email");
+    const mainLinkWrap = document.getElementById("artist-main-link-wrap");
+    const mainLinkA = document.getElementById("artist-main-link");
+    const mainLinkText = document.getElementById("artist-main-link-text");
+    const qrImg = document.getElementById("artist-qr-img");
+    const qrText = document.getElementById("artist-qr-text");
+    const avatarImg = document.getElementById("artist-avatar-img");
+    const avatarFallback = document.getElementById("artist-avatar-fallback");
+
+    function showAvatar(url, letter) {
+      if (url) {
+        avatarImg.src = url;
+        avatarImg.style.display = "block";
+        avatarFallback.style.display = "none";
+      } else {
+        avatarImg.src = "";
+        avatarImg.style.display = "none";
+        avatarFallback.style.display = "block";
+        avatarFallback.textContent = (letter || "M").toUpperCase();
+      }
+    }
+
+    async function loadArtist() {
+      if (!uid) {
+        nameEl.textContent = "Artist ID missing";
+        bioEl.textContent = "This Matty artist link is missing a ?uid= parameter.";
+        qrText.textContent = "Add ?uid=USER_ID to the URL to show a valid card.";
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from("profiles")
+        .select("*")
+        .eq("id", uid)
+        .single();
+
+      if (error) {
+        console.error(error);
+        nameEl.textContent = "Error loading card";
+        bioEl.textContent = error.message || String(error);
+        qrText.textContent = "Please try again later.";
+        return;
+      }
+
+      if (!data) {
+        nameEl.textContent = "Artist not found";
+        bioEl.textContent = "This Matty artist card could not be loaded.";
+        qrText.textContent = "Check that the QR or link uses the right user ID.";
+        return;
+      }
+
+      const displayName = data.display_name || "Matty Artist";
+      const handle = data.handle || "";
+      const bio = data.bio || "No bio yet. This artist is still setting up their Matty space.";
+      const email = data.email || "";
+      const mainLink = data.main_link || "";
+      const avatarUrl = data.avatar_url || null;
+
+      nameEl.textContent = displayName;
+      handleEl.textContent = handle ? `@${handle.replace(/^@/, "")}` : "";
+      bioEl.textContent = bio;
+      emailEl.textContent = email;
+
+      showAvatar(avatarUrl, displayName[0]);
+
+      let qrTarget = mainLink || window.location.href;
+      qrImg.src = "https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=" + encodeURIComponent(qrTarget);
+
+      if (mainLink) {
+        mainLinkWrap.style.display = "block";
+        mainLinkA.href = mainLink;
+        mainLinkText.textContent = "Open creator link";
+        qrText.textContent = "Scan to open this creator’s main link.";
+      } else {
+        mainLinkWrap.style.display = "none";
+        qrText.textContent = "Scan to open this Matty artist card.";
+      }
+    }
+
+    loadArtist();
+  </script>
+</body>
+</html>

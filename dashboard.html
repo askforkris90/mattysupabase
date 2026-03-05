@@ -1,0 +1,264 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Matty Social · Dashboard (Supabase)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="./css/matty.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="./js/supabase-init.js"></script>
+</head>
+<body>
+  <main class="matty-shell">
+    <div class="matty-shell-inner">
+      <div class="matty-logo-row">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="matty-logo-mark">M</div>
+          <div class="matty-logo-text">
+            <div class="matty-logo-name">Matty Social</div>
+            <div class="matty-logo-sub">Creator Dashboard</div>
+          </div>
+        </div>
+        <div class="matty-hint-pill">
+          <span class="matty-dot"></span>
+          <span id="status-pill">Loading…</span>
+        </div>
+      </div>
+
+      <h1 class="matty-title" id="dash-title">Your neon space</h1>
+      <p class="matty-subtitle" id="dash-subtitle">
+        We’ll pull your profile from Supabase. Use this for your artist QR page.
+      </p>
+
+      <section class="matty-form" style="margin-top:18px;">
+        <div class="matty-avatar-wrap">
+          <div class="matty-avatar-ring">
+            <div class="matty-avatar-inner">
+              <img id="avatar-img" alt="Avatar" />
+              <span id="avatar-fallback">M</span>
+            </div>
+          </div>
+          <div>
+            <button type="button" class="matty-btn-secondary matty-avatar-btn"
+                    id="avatar-change-btn">
+              Change photo
+            </button>
+            <input type="file" id="avatar-file" accept="image/*" style="display:none" />
+          </div>
+        </div>
+
+        <div>
+          <label>Display name</label>
+          <div class="matty-input-wrap">
+            <span class="matty-input-icon">🎭</span>
+            <input id="profile-display" class="matty-input" type="text"
+                   placeholder="Matty Artist" />
+          </div>
+        </div>
+
+        <div>
+          <label>Handle (optional)</label>
+          <div class="matty-input-wrap">
+            <span class="matty-input-icon">@</span>
+            <input id="profile-handle" class="matty-input" type="text"
+                   placeholder="@mattyartist" />
+          </div>
+        </div>
+
+        <div>
+          <label>Bio</label>
+          <textarea id="profile-bio" class="matty-input" rows="3"
+                    style="resize:vertical;padding-left:12px;"></textarea>
+        </div>
+
+        <div>
+          <label>Main link (for QR)</label>
+          <div class="matty-input-wrap">
+            <span class="matty-input-icon">🔗</span>
+            <input id="profile-link" class="matty-input" type="url"
+                   placeholder="https://linktr.ee/you or your Matty page" />
+          </div>
+        </div>
+
+        <button type="button" class="matty-btn-primary" id="save-profile-btn">
+          <span>Save profile</span>
+          <span style="font-size:14px;">💾</span>
+        </button>
+
+        <button type="button" class="matty-btn-secondary" id="logout-btn">
+          <span>Sign out</span>
+        </button>
+      </section>
+
+      <div id="dash-status" class="matty-status"></div>
+
+      <div class="matty-footer">
+        <span>Use this to power QR Matty artist cards.</span>
+        <span style="opacity:0.7;">Session: Supabase</span>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { supabaseClient } from "./js/supabase-init.js";
+
+    const titleEl = document.getElementById("dash-title");
+    const subtitleEl = document.getElementById("dash-subtitle");
+    const statusPill = document.getElementById("status-pill");
+    const statusEl = document.getElementById("dash-status");
+
+    const displayInput = document.getElementById("profile-display");
+    const handleInput = document.getElementById("profile-handle");
+    const bioInput = document.getElementById("profile-bio");
+    const linkInput = document.getElementById("profile-link");
+
+    const saveBtn = document.getElementById("save-profile-btn");
+    const logoutBtn = document.getElementById("logout-btn");
+
+    const avatarImg = document.getElementById("avatar-img");
+    const avatarFallback = document.getElementById("avatar-fallback");
+    const avatarChangeBtn = document.getElementById("avatar-change-btn");
+    const avatarFileInput = document.getElementById("avatar-file");
+
+    let currentUser = null;
+    let selectedAvatarFile = null;
+
+    function setStatus(msg, type="") {
+      statusEl.textContent = msg || "";
+      statusEl.classList.remove("error","ok");
+      if (type) statusEl.classList.add(type);
+    }
+
+    function showAvatar(url, letter) {
+      if (url) {
+        avatarImg.src = url;
+        avatarImg.style.display = "block";
+        avatarFallback.style.display = "none";
+      } else {
+        avatarImg.src = "";
+        avatarImg.style.display = "none";
+        avatarFallback.style.display = "block";
+        avatarFallback.textContent = (letter || "M").toUpperCase();
+      }
+    }
+
+    avatarChangeBtn.addEventListener("click", () => {
+      avatarFileInput.click();
+    });
+
+    avatarFileInput.addEventListener("change", () => {
+      const file = avatarFileInput.files[0];
+      if (!file) return;
+      selectedAvatarFile = file;
+      const url = URL.createObjectURL(file);
+      showAvatar(url);
+    });
+
+    async function loadSessionAndProfile() {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error || !data.session) {
+        window.location.href = "./index.html";
+        return;
+      }
+
+      currentUser = data.session.user;
+      const baseName = currentUser.email ? currentUser.email.split("@")[0] : "Matty";
+      titleEl.textContent = baseName + "'s neon space";
+      statusPill.textContent = "Online";
+      statusPill.style.color = "#5bffae";
+
+      const { data: profile, error: profileError } = await supabaseClient
+        .from("profiles")
+        .select("*")
+        .eq("id", currentUser.id)
+        .single();
+
+      if (profileError && profileError.code !== "PGRST116") {
+        console.error(profileError);
+        setStatus("Failed to load profile: " + profileError.message, "error");
+        showAvatar(null, baseName[0]);
+        return;
+      }
+
+      if (profile) {
+        displayInput.value = profile.display_name || baseName;
+        handleInput.value = profile.handle || "";
+        bioInput.value = profile.bio || "";
+        linkInput.value = profile.main_link || "";
+        subtitleEl.textContent = "Edit your artist card. This will sync with your QR page.";
+        showAvatar(profile.avatar_url || null, (profile.display_name || baseName)[0]);
+      } else {
+        subtitleEl.textContent = "No profile yet. Save to create one.";
+        showAvatar(null, baseName[0]);
+      }
+    }
+
+    loadSessionAndProfile();
+
+    saveBtn.addEventListener("click", async () => {
+      if (!currentUser) {
+        window.location.href = "./index.html";
+        return;
+      }
+      setStatus("Saving profile…");
+      saveBtn.disabled = true;
+
+      let avatarUrl = null;
+
+      if (selectedAvatarFile) {
+        const fileName = currentUser.id + ".jpg";
+        const { error: uploadError } = await supabaseClient.storage
+          .from("avatars")
+          .upload(fileName, selectedAvatarFile, { upsert: true });
+
+        if (uploadError) {
+          console.error(uploadError);
+          setStatus("Avatar upload failed: " + uploadError.message, "error");
+        } else {
+          const { data: publicData } = supabaseClient.storage
+            .from("avatars")
+            .getPublicUrl(fileName);
+          avatarUrl = publicData.publicUrl;
+        }
+      } else {
+        const { data: prof } = await supabaseClient
+          .from("profiles")
+          .select("avatar_url")
+          .eq("id", currentUser.id)
+          .single();
+        avatarUrl = prof ? prof.avatar_url : null;
+      }
+
+      const payload = {
+        id: currentUser.id,
+        display_name: displayInput.value.trim() || currentUser.email,
+        handle: handleInput.value.trim() || null,
+        bio: bioInput.value.trim(),
+        main_link: linkInput.value.trim() || null,
+        avatar_url: avatarUrl,
+        updated_at: new Date().toISOString(),
+        email: currentUser.email
+      };
+
+      const { error: upsertError } = await supabaseClient
+        .from("profiles")
+        .upsert(payload);
+
+      if (upsertError) {
+        console.error(upsertError);
+        setStatus("Failed to save profile: " + upsertError.message, "error");
+      } else {
+        showAvatar(avatarUrl, payload.display_name[0]);
+        setStatus("Profile saved.", "ok");
+      }
+      saveBtn.disabled = false;
+    });
+
+    logoutBtn.addEventListener("click", async () => {
+      await supabaseClient.auth.signOut();
+      window.location.href = "./index.html";
+    });
+  </script>
+</body>
+</html>
