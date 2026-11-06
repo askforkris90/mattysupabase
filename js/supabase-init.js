@@ -1,10 +1,11 @@
 
 // supabase-init.js
-// Fill in your Supabase URL + anon key from Settings -> API
+// Public Supabase project connection for the artist site.
 
 const { createClient } = window.supabase;
 
 export const supabaseClient = createClient(
-  "https://YOUR_PROJECT_ID.supabase.co",
-  "YOUR_PUBLIC_ANON_KEY"
+  "https://jgavjllnhqiftgbfmhuy.supabase.co",
+  "sb_publishable_Rvj-ZVP1guopBTfYg9hS0Q_npx1JwP3"
 );
+
